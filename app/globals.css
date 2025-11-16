@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Larken:wght@400;500&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -15,16 +14,12 @@
 
 body {
   background: var(--background);
-  background-image: url('/wordcloudSingle.png');
-  background-repeat: repeat;
-  background-size: 300px 300px;
-  background-attachment: fixed;
   color: var(--foreground);
-  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
   position: relative;
 }
 
-/* Add a pseudo-element for the background image with opacity */
+/* Add a pseudo-element for the background image with opacity - optimized loading */
 body::before {
   content: '';
   position: fixed;
@@ -39,6 +34,7 @@ body::before {
   opacity: 0.2;
   z-index: -1;
   pointer-events: none;
+  will-change: transform;
 }
 
 /* Custom scrollbar for webkit browsers */
