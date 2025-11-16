@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import Image from 'next/image';
 
 interface ImageCarouselProps {
@@ -8,22 +8,34 @@ interface ImageCarouselProps {
   autoPlayInterval?: number;
 }
 
-export default function ImageCarousel({ images, autoPlayInterval = 3000 }: ImageCarouselProps) {
+function ImageCarousel({ images, autoPlayInterval = 3000 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const navbarRef = useRef<HTMLDivElement | null>(null);
   const hasMounted = useRef(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!isAutoPlaying) return;
+    if (!isAutoPlaying) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
 
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
     }, autoPlayInterval);
 
-    return () => clearInterval(interval);
-  }, [currentIndex, isAutoPlaying, autoPlayInterval, images.length]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isAutoPlaying, autoPlayInterval, images.length]);
 
   // Auto-scroll active thumbnail into view, but skip on initial mount
   useEffect(() => {
@@ -44,33 +56,33 @@ export default function ImageCarousel({ images, autoPlayInterval = 3000 }: Image
     }
   }, [images]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-  };
+  }, [images.length]);
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     setCurrentIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
-  };
+  }, [images.length]);
 
-  const goToImage = (index: number) => {
+  const goToImage = useCallback((index: number) => {
     setCurrentIndex(index);
-  };
+  }, []);
 
-  const toggleAutoPlay = () => {
-    setIsAutoPlaying(!isAutoPlaying);
-  };
+  const toggleAutoPlay = useCallback(() => {
+    setIsAutoPlaying((prev) => !prev);
+  }, []);
 
   return (
     <div className="relative w-full max-w-4xl mx-auto">
       {/* Main Image Display with Liquid Glass Effect */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl">
+      <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl">
         {/* Liquid Glass Container */}
         <div className="absolute inset-0 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl shadow-2xl">
           {/* Dynamic Lighting Effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/10 rounded-2xl"></div>
+          <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-white/10 rounded-2xl"></div>
           
           {/* Subtle Border Glow */}
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#d95959]/10 via-transparent to-[#d95555]/10 border border-white/30"></div>
+          <div className="absolute inset-0 rounded-2xl bg-linear-to-r from-[#d95959]/10 via-transparent to-[#d95555]/10 border border-white/30"></div>
         </div>
         
         {/* Image with Liquid Glass Overlay */}
@@ -81,10 +93,13 @@ export default function ImageCarousel({ images, autoPlayInterval = 3000 }: Image
             fill
             className="object-contain transition-transform duration-500 ease-in-out hover:scale-105 rounded-2xl"
             priority={currentIndex === 0}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1024px"
+            quality={85}
+            loading={currentIndex === 0 ? "eager" : "lazy"}
           />
           
           {/* Liquid Glass Overlay for Image */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/10 rounded-2xl pointer-events-none"></div>
+          <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-white/10 rounded-2xl pointer-events-none"></div>
         </div>
         
         {/* Navigation Arrows with Liquid Glass */}
@@ -130,7 +145,7 @@ export default function ImageCarousel({ images, autoPlayInterval = 3000 }: Image
             key={index}
             ref={el => { thumbnailRefs.current[index] = el; }}
             onClick={() => goToImage(index)}
-            className={`relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 transition-all duration-300 box-border p-1 ${
+            className={`relative w-14 h-14 rounded-xl overflow-hidden shrink-0 transition-all duration-300 box-border p-1 ${
               index === currentIndex
                 ? 'ring-2 ring-[#d95959]/50 scale-110 z-10 bg-white/10 backdrop-blur-md border border-white/30 shadow-lg'
                 : 'hover:scale-105 opacity-70 hover:opacity-100 bg-white/10 backdrop-blur-sm border border-white/20'
@@ -142,12 +157,17 @@ export default function ImageCarousel({ images, autoPlayInterval = 3000 }: Image
               alt={`Thumbnail ${index + 1}`}
               fill
               className="object-contain rounded-lg"
+              sizes="56px"
+              loading="lazy"
+              quality={60}
             />
             {/* Liquid Glass Overlay for Thumbnails */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 rounded-lg pointer-events-none"></div>
+            <div className="absolute inset-0 bg-linear-to-br from-white/10 via-transparent to-white/5 rounded-lg pointer-events-none"></div>
           </button>
         ))}
       </div>
     </div>
   );
-} 
+}
+
+export default memo(ImageCarousel); 
