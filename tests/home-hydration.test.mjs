@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {act} from 'react';
+import {spawnSync} from 'node:child_process';
+import {JSDOM} from 'jsdom';
+import {applicationModule,applicationView} from './component-harness.mjs';
+const {default:Home}=await applicationModule('app/page.tsx');
+
+test('the actual homepage hydrates without random image-order mismatches',async t=>{
+ const random=t.mock.method(Math,'random',()=>0.9);
+ const rendered=spawnSync(process.execPath,['tests/render-home.mjs'],{encoding:'utf8',timeout:10000,maxBuffer:2*1024*1024,env:{PATH:process.env.PATH,HOME:'/tmp',NODE_ENV:'test',NEXT_TELEMETRY_DISABLED:'1'}});
+ assert.equal(rendered.status,0,'separate server rendering succeeds');
+ const html=rendered.stdout;
+ const dom=new JSDOM('<!doctype html><html><body><div id="root">'+html+'</div></body></html>',{url:'https://fixture.invalid/'});
+ const frames=new Map();let frameId=0;
+ dom.window.requestAnimationFrame=callback=>{frames.set(++frameId,callback);return frameId;};
+ dom.window.cancelAnimationFrame=id=>frames.delete(id);
+ const initialImage=dom.window.document.querySelector('img[alt="Thumbnail 1"]').getAttribute('src');
+ dom.window.HTMLElement.prototype.scrollTo=()=>{};dom.window.HTMLElement.prototype.scrollIntoView=()=>{};
+ const globals={window:dom.window,document:dom.window.document,navigator:dom.window.navigator,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true};
+ const previous=new Map(Object.keys(globals).map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+ for(const [key,value] of Object.entries(globals))Object.defineProperty(globalThis,key,{value,configurable:true,writable:true});
+ const errors=[];t.mock.method(console,'error',(...args)=>errors.push(args.map(String).join(' ')));
+ random.mock.mockImplementation(()=>0.1);
+ const {hydrateRoot}=await import('react-dom/client');let root;
+ t.after(async()=>{if(root)await act(async()=>root.unmount());dom.window.close();for(const [key,descriptor] of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}});
+ await act(async()=>{root=hydrateRoot(dom.window.document.getElementById('root'),applicationView(Home),{onRecoverableError:error=>errors.push(error.message)});});
+ assert.deepEqual(errors.map(error=>error.split('\n')[0]),[],'server and first client rendering must agree');
+ assert.equal(dom.window.document.querySelector('img[alt="Thumbnail 1"]').getAttribute('src'),initialImage);
+ const pending=[...frames.values()];frames.clear();assert.ok(pending.length>0&&pending.length<10);
+ await act(async()=>{for(const callback of pending)callback(16);});
+ assert.notEqual(dom.window.document.querySelector('img[alt="Thumbnail 1"]').getAttribute('src'),initialImage,'photos shuffle after initial hydration');
+ const thumbnails=dom.window.document.querySelectorAll('img[alt^="Thumbnail"]');assert.equal(thumbnails.length,25);
+ const sources=[...thumbnails].map(image=>image.getAttribute('src'));assert.equal(new Set(sources).size,25);
+});
