@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import ImageCarousel from "./components/ImageCarousel";
 
 // Lazy load Typewriter to reduce initial bundle size
@@ -49,10 +49,14 @@ const typewriterWords: string[] = [
 ];
 
 export default function Home() {
-  // Randomize the order of photos (using useState with lazy initializer to avoid impure function calls during render)
-  const [shuffledPhotos] = useState(() =>
-    [...weddingPhotos].sort(() => Math.random() - 0.5)
-  );
+  // Keep server and initial client markup identical, then shuffle after hydration.
+  const [shuffledPhotos, setShuffledPhotos] = useState(weddingPhotos);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setShuffledPhotos([...weddingPhotos].sort(() => Math.random() - 0.5));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   return (
     <div className="h-screen bg-linear-to-br from-[#d95959]/30 via-white/80 to-[#d95555]/30">
@@ -93,7 +97,7 @@ export default function Home() {
                 className="text-xl md:text-2xl font-light text-gray-700 mb-1"
                 style={{ fontFamily: "var(--font-playfair)" }}
               >
-                Louise & Christoph Hörl-Scheiber
+                Louise &amp; Christoph Hörl-Scheiber
               </h2>
               <div className="w-24 h-1 bg-linear-to-r from-[#d95959] to-[#d95555] mx-auto rounded-full"></div>
             </div>
@@ -114,7 +118,7 @@ export default function Home() {
           style={{ animationDelay: "0.7s" }}
         >
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-2 shadow-lg border border-white/20">
-            <p>Made with ❤️ by Thomas for Lou & Chris</p>
+            <p>Made with ❤️ by Thomas for Lou &amp; Chris</p>
           </div>
         </footer>
       </div>
