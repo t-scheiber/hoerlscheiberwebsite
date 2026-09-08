@@ -10,6 +10,11 @@ interface ImageCarouselProps {
 
 function ImageCarousel({ images, autoPlayInterval = 3000 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageCount, setImageCount] = useState(images.length);
+  if (imageCount !== images.length) {
+    setImageCount(images.length);
+    setCurrentIndex(index => Math.min(index, Math.max(0, images.length - 1)));
+  }
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const navbarRef = useRef<HTMLDivElement | null>(null);
@@ -17,7 +22,7 @@ function ImageCarousel({ images, autoPlayInterval = 3000 }: ImageCarouselProps) 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!isAutoPlaying) {
+    if (!isAutoPlaying || images.length < 2) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -26,7 +31,7 @@ function ImageCarousel({ images, autoPlayInterval = 3000 }: ImageCarouselProps) 
     }
 
     intervalRef.current = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
+      setCurrentIndex((prevIndex) => images.length ? (prevIndex + 1) % images.length : 0);
     }, autoPlayInterval);
 
     return () => {
@@ -57,11 +62,11 @@ function ImageCarousel({ images, autoPlayInterval = 3000 }: ImageCarouselProps) 
   }, [images]);
 
   const goToNext = useCallback(() => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
+    setCurrentIndex((prevIndex) => images.length ? (prevIndex + 1) % images.length : 0);
   }, [images.length]);
 
   const goToPrevious = useCallback(() => {
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
+    setCurrentIndex((prevIndex) => images.length ? (prevIndex - 1 + images.length) % images.length : 0);
   }, [images.length]);
 
   const goToImage = useCallback((index: number) => {
@@ -71,6 +76,10 @@ function ImageCarousel({ images, autoPlayInterval = 3000 }: ImageCarouselProps) 
   const toggleAutoPlay = useCallback(() => {
     setIsAutoPlaying((prev) => !prev);
   }, []);
+
+  if (images.length === 0) {
+    return <p role="status">Noch keine Fotos verfügbar.</p>;
+  }
 
   return (
     <div className="relative w-full max-w-4xl mx-auto">
