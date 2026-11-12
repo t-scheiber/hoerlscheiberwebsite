@@ -1,6 +1,6 @@
 # hoerlscheiberwebsite
 
-A one-page photo gallery for the wedding of Louise and Christoph Hörl-Scheiber on 18 July 2025. Thomas Scheiber built it for his brother's wedding. The page text is in German.
+A one-page photo gallery for the wedding of Louise and Christoph Hörl-Scheiber on 18 July 2025. I built it for my brother's wedding. The page text is in German.
 
 The home page shows a heading that types out congratulation messages in a loop, then a slideshow of 25 wedding photos below it. The photo list is hard-coded in `app/page.tsx` and is shuffled in the browser after the page loads. Server and first client render use the same order, so hydration does not mismatch.
 
